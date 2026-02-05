@@ -6,18 +6,17 @@ import os
 import gdown
 import mediapipe as mp
 from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
-from streamlit_autorefresh import st_autorefresh
 
-# --- 1. ตั้งค่าพื้นฐาน MediaPipe ---
+# --- 1. ตั้งค่าพื้นฐาน MediaPipe (ลดความละเอียดเพื่อความลื่น) ---
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(
     static_image_mode=False,
     max_num_hands=1,
-    min_detection_confidence=0.7,
+    min_detection_confidence=0.5, # ปรับลดลงเล็กน้อยเพื่อให้ตรวจจับเร็วขึ้น
     model_complexity=0
 )
 
-# --- 2. โหลดโมเดลจาก Google Drive ---
+# --- 2. โหลดโมเดลจาก Drive ---
 MODEL_PATH = "asl_rf.pkl"
 GOOGLE_DRIVE_ID = "1OdCW3HuSmrCpB2YdN-5pjagEtI7Pa1MH"
 
@@ -26,29 +25,24 @@ def load_model():
     if not os.path.exists(MODEL_PATH):
         url = f'https://drive.google.com/uc?id={GOOGLE_DRIVE_ID}'
         gdown.download(url, MODEL_PATH, quiet=False)
-    
     data = joblib.load(MODEL_PATH)
-    # เช็คว่าข้างในเป็น Dict หรือเป็น Model เลย
     if isinstance(data, dict):
-        model = data.get('model') or data.get('classifier')
-        le = data.get('label_encoder') or data.get('labels')
-        return model, le
-    return data[0], data[1] # กรณีเป็น list หรือ tuple
+        return data.get('model') or data.get('classifier'), data.get('label_encoder') or data.get('labels')
+    return data[0], data[1]
 
-try:
-    model, label_encoder = load_model()
-except Exception as e:
-    st.error(f"โหลดโมเดลไม่สำเร็จ: {e}")
-    st.stop()
+model, label_encoder = load_model()
 
-# --- 3. ส่วนแสดงผล (UI) ---
+# --- 3. UI Layout ---
 st.set_page_config(page_title="Signjai ASL", layout="wide")
 st.title("👋 Signjai - ภาษามืออัจฉริยะ")
 
+# ส่วนที่ใช้แสดงผลแบบ Real-time โดยไม่ต้อง Refresh ทั้งหน้า
+placeholder = st.empty()
+
+if 'text_output' not in st.session_state:
+    st.session_state.text_output = ""
 if 'current_char' not in st.session_state:
     st.session_state.current_char = "-"
-
-st_autorefresh(interval=800, key="refresh")
 
 col1, col2 = st.columns([2, 1])
 
@@ -60,12 +54,15 @@ with col1:
 
         if results.multi_hand_landmarks:
             for hand_landmarks in results.multi_hand_landmarks:
-                landmarks = []
-                for lm in hand_landmarks.landmark:
-                    landmarks.extend([lm.x, lm.y, lm.z])
+                landmarks = [lm.x for lm in hand_landmarks.landmark] + \
+                            [lm.y for lm in hand_landmarks.landmark] + \
+                            [lm.z for lm in hand_landmarks.landmark]
                 
-                prediction = model.predict([landmarks])
-                st.session_state.current_char = label_encoder.inverse_transform(prediction)[0]
+                try:
+                    prediction = model.predict([landmarks[:63]]) # ปรับให้ตรงกับ 21 จุด (x,y,z)
+                    st.session_state.current_char = label_encoder.inverse_transform(prediction)[0]
+                except:
+                    pass
         else:
             st.session_state.current_char = "-"
         return frame
@@ -80,29 +77,22 @@ with col1:
     )
 
 with col2:
+    # แสดงกรอบผลลัพธ์
     st.markdown(f"""
-        <div style="background-color: #f0f2f6; padding: 25px; border-radius: 15px; border: 4px solid #31333f; text-align: center;">
-            <p style="color: #666; font-weight: bold; margin: 0;">DETECTED</p>
-            <h1 style="color: #31333f; font-size: 80px; margin: 10px 0;">{st.session_state.current_char}</h1>
+        <div style="background-color: #f0f2f6; padding: 20px; border-radius: 15px; border: 3px solid #31333f; text-align: center;">
+            <p style="color: #666; font-weight: bold;">DETECTED</p>
+            <h1 style="color: #31333f; font-size: 70px;">{st.session_state.current_char}</h1>
         </div>
     """, unsafe_allow_html=True)
-
-
-# --- เพิ่มส่วนนี้ไว้ล่างสุดของไฟล์ app.py ---
-st.divider()
-if 'text_output' not in st.session_state:
-    st.session_state.text_output = ""
-
-col_btn1, col_btn2 = st.columns(2)
-with col_btn1:
-    if st.button("➕ เพิ่มตัวอักษร"):
+    
+    # เพิ่มปุ่มฟังก์ชันที่หายไป
+    st.write("---")
+    if st.button("➕ บันทึกตัวอักษร"):
         if st.session_state.current_char != "-":
             st.session_state.text_output += st.session_state.current_char
-
-with col_btn2:
-    if st.button("🧹 ล้างทั้งหมด"):
+    
+    if st.button("🧹 ล้างข้อความ"):
         st.session_state.text_output = ""
 
-st.subheader("📜 ข้อความที่สะกดได้:")
-st.info(st.session_state.text_output if st.session_state.text_output != "" else "ยังไม่มีข้อความ")
-
+    st.subheader("📝 ข้อความ:")
+    st.success(st.session_state.text_output if st.session_state.text_output else "(ว่าง)")
