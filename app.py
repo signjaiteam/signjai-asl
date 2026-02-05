@@ -7,25 +7,17 @@ import gdown
 from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
 from streamlit_autorefresh import st_autorefresh
 
-# --- 0. แก้ปัญหา MediaPipe Import แบบถอนรากถอนโคน ---
+# --- 0. แก้ปัญหา MediaPipe Import แบบครอบจักรวาล ---
 try:
     import mediapipe as mp
-    # พยายามดึง solutions ตรงๆ
     mp_hands = mp.solutions.hands
     mp_drawing = mp.solutions.drawing_utils
 except Exception:
     try:
-        # ถ้าแบบแรกไม่ได้ ให้ลองดึงผ่าน submodule
         from mediapipe.python.solutions import hands as mp_hands
         from mediapipe.python.solutions import drawing_utils as mp_drawing
     except Exception as e:
         st.error(f"วิกฤต! ไม่สามารถโหลด MediaPipe ได้: {e}")
-        st.info("คำแนะนำ: ลองไปที่หน้า App Settings ใน Streamlit Cloud แล้วเปลี่ยน Python Version เป็น 3.11 หรือ 3.12 จะเสถียรกว่าครับ")
-        st.stop()
-
-# --- 1. จัดการเรื่องดาวน์โหลดโมเดลจาก Google Drive ---
-# (โค้ดส่วนเดิมของคุณด้านล่างนี้ใช้ได้แล้วครับ)
-        st.error(f"MediaPipe Load Error: {e}")
         st.stop()
 
 # --- 1. จัดการเรื่องดาวน์โหลดโมเดลจาก Google Drive ---
@@ -42,7 +34,11 @@ def load_model_from_drive():
             except Exception as e:
                 st.error(f"Download Error: {e}")
                 st.stop()
-    return joblib.load(MODEL_PATH)
+    try:
+        return joblib.load(MODEL_PATH)
+    except Exception as e:
+        st.error(f"ไฟล์โมเดลเสียหายหรือโหลดไม่ได้: {e}")
+        st.stop()
 
 # โหลดโมเดลและจัดการเรื่อง Key ใน Dictionary
 try:
@@ -58,10 +54,14 @@ try:
     else:
         model = model_data  # กรณีเซฟมาแบบโมเดลเพียวๆ
 except Exception as e:
-    st.error(f"เกิดข้อผิดพลาดในการโหลดโมเดล: {e}")
+    st.error(f"เกิดข้อผิดพลาดในการดึงข้อมูลโมเดล: {e}")
     st.stop()
 
-# --- 2. ตั้งค่า MediaPipe ---
+# --- 2. ตั้งค่า MediaPipe และ Session State ---
+if 'current_char' not in st.session_state:
+    st.session_state.current_char = "-"
+
+# ตั้งค่าโมเดลมือ
 hands = mp_hands.Hands(
     static_image_mode=False,
     max_num_hands=1,
@@ -69,11 +69,7 @@ hands = mp_hands.Hands(
     model_complexity=0 
 )
 
-# ใช้ Session State เก็บค่า
-if 'current_char' not in st.session_state:
-    st.session_state.current_char = "-"
-
-# อัปเดตหน้าจอ
+# อัปเดตหน้าจออัตโนมัติ
 st_autorefresh(interval=800, key="datarefresh")
 
 # --- 3. UI ---
@@ -127,4 +123,3 @@ with col2:
         </div>
     """, unsafe_allow_html=True)
     st.info("ระบบจะเปลี่ยนตัวอักษรตามท่าทางมือของคุณแบบเรียลไทม์")
-
