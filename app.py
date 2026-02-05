@@ -7,17 +7,24 @@ import gdown
 from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
 from streamlit_autorefresh import st_autorefresh
 
-# --- 0. พยายามโหลด MediaPipe แบบพิเศษ (แก้ปัญหา Python 3.13) ---
+# --- 0. แก้ปัญหา MediaPipe Import แบบถอนรากถอนโคน ---
 try:
     import mediapipe as mp
-    from mediapipe.solutions import hands as mp_hands
-    from mediapipe.solutions import drawing_utils as mp_drawing
-except (ImportError, AttributeError):
+    # พยายามดึง solutions ตรงๆ
+    mp_hands = mp.solutions.hands
+    mp_drawing = mp.solutions.drawing_utils
+except Exception:
     try:
-        import mediapipe as mp
+        # ถ้าแบบแรกไม่ได้ ให้ลองดึงผ่าน submodule
         from mediapipe.python.solutions import hands as mp_hands
         from mediapipe.python.solutions import drawing_utils as mp_drawing
     except Exception as e:
+        st.error(f"วิกฤต! ไม่สามารถโหลด MediaPipe ได้: {e}")
+        st.info("คำแนะนำ: ลองไปที่หน้า App Settings ใน Streamlit Cloud แล้วเปลี่ยน Python Version เป็น 3.11 หรือ 3.12 จะเสถียรกว่าครับ")
+        st.stop()
+
+# --- 1. จัดการเรื่องดาวน์โหลดโมเดลจาก Google Drive ---
+# (โค้ดส่วนเดิมของคุณด้านล่างนี้ใช้ได้แล้วครับ)
         st.error(f"MediaPipe Load Error: {e}")
         st.stop()
 
@@ -120,3 +127,4 @@ with col2:
         </div>
     """, unsafe_allow_html=True)
     st.info("ระบบจะเปลี่ยนตัวอักษรตามท่าทางมือของคุณแบบเรียลไทม์")
+
