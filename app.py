@@ -1,6 +1,8 @@
 import streamlit as st
 import cv2
-import mediapipe as mp
+iimport mediapipe as mp
+from mediapipe.python.solutions import hands as mp_hands
+from mediapipe.python.solutions import drawing_utils as mp_drawing
 import joblib
 import numpy as np
 import os
@@ -47,7 +49,7 @@ except Exception as e:
     st.stop()
 
 # --- 2. ตั้งค่า MediaPipe และตัวแปรกลาง ---
-mp_hands = mp.solutions.hands
+
 hands = mp_hands.Hands(
     static_image_mode=False,
     max_num_hands=1,
@@ -118,3 +120,4 @@ with col2:
     # ส่วนบันทึกข้อความ (สามารถเพิ่มปุ่ม Save/Clear ได้ที่นี่)
 
     st.info("ระบบจะเปลี่ยนตัวอักษรตามท่าทางมือของคุณแบบเรียลไทม์")
+
