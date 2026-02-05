@@ -21,10 +21,27 @@ def load_model_from_drive():
     return joblib.load(MODEL_PATH)
 
 # โหลดโมเดล
+# --- แก้ไขบรรทัด 24-30 ใน app.py ---
 try:
     model_data = load_model_from_drive()
-    model = model_data['model']
-    label_encoder = model_data['label_encoder']
+    
+    if isinstance(model_data, dict):
+        # 1. งมหาตัว Model
+        model = model_data.get('model') or model_data.get('classifier')
+        
+        # 2. งมหาตัว Label Encoder
+        label_encoder = model_data.get('label_encoder') or model_data.get('labels')
+        
+        # 3. ถ้าหาชื่อไม่เจอจริงๆ ให้หยิบตามลำดับ (ตัวแรกคือโมเดล ตัวสองคือเลเบล)
+        if model is None or label_encoder is None:
+            keys = list(model_data.keys())
+            model = model_data[keys[0]]
+            label_encoder = model_data[keys[1]]
+    else:
+        # กรณีไฟล์ .pkl ไม่ใช่ dict (เป็นโมเดลเพียวๆ)
+        st.error("ไฟล์โมเดลมีรูปแบบไม่รองรับ กรุณาตรวจสอบการ Save")
+        st.stop()
+
 except Exception as e:
     st.error(f"เกิดข้อผิดพลาดในการโหลดโมเดล: {e}")
     st.stop()
@@ -99,4 +116,5 @@ with col2:
     """, unsafe_allow_html=True)
 
     # ส่วนบันทึกข้อความ (สามารถเพิ่มปุ่ม Save/Clear ได้ที่นี่)
+
     st.info("ระบบจะเปลี่ยนตัวอักษรตามท่าทางมือของคุณแบบเรียลไทม์")
