@@ -6,5 +6,4 @@ joblib
 numpy
 scikit-learn
 opencv-python-headless
-av
 gdown
