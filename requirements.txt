@@ -1,9 +1,10 @@
 streamlit
 streamlit-webrtc
 streamlit-autorefresh
-mediapipe
+mediapipe==0.10.9
 joblib
 numpy
 scikit-learn
 opencv-python-headless
 gdown
+
