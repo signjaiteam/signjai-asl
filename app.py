@@ -86,3 +86,23 @@ with col2:
             <h1 style="color: #31333f; font-size: 80px; margin: 10px 0;">{st.session_state.current_char}</h1>
         </div>
     """, unsafe_allow_html=True)
+
+
+# --- เพิ่มส่วนนี้ไว้ล่างสุดของไฟล์ app.py ---
+st.divider()
+if 'text_output' not in st.session_state:
+    st.session_state.text_output = ""
+
+col_btn1, col_btn2 = st.columns(2)
+with col_btn1:
+    if st.button("➕ เพิ่มตัวอักษร"):
+        if st.session_state.current_char != "-":
+            st.session_state.text_output += st.session_state.current_char
+
+with col_btn2:
+    if st.button("🧹 ล้างทั้งหมด"):
+        st.session_state.text_output = ""
+
+st.subheader("📜 ข้อความที่สะกดได้:")
+st.info(st.session_state.text_output if st.session_state.text_output != "" else "ยังไม่มีข้อความ")
+
